@@ -22,7 +22,6 @@ class _HomePageState extends State<HomePage> {
   StorageService storageService = StorageService();
   final _toController = TextEditingController();
   final _fromController = TextEditingController();
-  final _searchController = TextEditingController();
   bool isSortedByPoints = false;
   bool isSortedByDate = false;
   late List<Hits> newsList = [];
@@ -104,7 +103,6 @@ class _HomePageState extends State<HomePage> {
             margin: EdgeInsets.all(16),
             child: TextField(
               cursorColor: Colors.orange,
-              controller: _searchController,
               decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search),
                 hintText: "key word",
