@@ -31,8 +31,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    newsList = [];
-    mainNewsList = [];
     fetchNews();
   }
 
@@ -49,8 +47,8 @@ Future<List<Hits>> fetchNews() async {
     final fetchedNews = await client.getNews();
     setState(() {
       newsList = fetchedNews;
+      mainNewsList = fetchedNews;
     });
-    newsList=fetchedNews;
     return fetchedNews;
   }
   @override
@@ -109,6 +107,13 @@ Future<List<Hits>> fetchNews() async {
                   title: Text("filter by date"),
                 ),
               ),
+              const PopupMenuItem(
+                value: 'searchByKeyWord',
+                child: ListTile(
+                  leading: Icon(Icons.text_fields_rounded),
+                  title: Text("search by text"),
+                ),
+              ),
             ],
           ),
         ],
@@ -141,7 +146,7 @@ Future<List<Hits>> fetchNews() async {
 
                   itemCount: mainNewsList.length,
                   itemBuilder: (BuildContext context, int index) {
-                    final Hits hit = mainNewsList[index];
+                     Hits hit = mainNewsList[index];
 
                     return GestureDetector(
                       onTap: () async {
