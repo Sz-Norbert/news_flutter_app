@@ -1,11 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:intl/intl.dart';
 import 'package:news_flutter_app/models/Hits.dart';
 import 'package:news_flutter_app/util/custom_range_dialog_box.dart';
 import 'package:news_flutter_app/pages/sorted_page.dart';
-import 'package:news_flutter_app/util/custom_search_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_services.dart';
 import '../services/sotrage_services.dart';
@@ -22,35 +22,18 @@ class _HomePageState extends State<HomePage> {
   StorageService storageService = StorageService();
   final _toController = TextEditingController();
   final _fromController = TextEditingController();
-  final serachController = TextEditingController();
   bool isSortedByPoints = false;
   bool isSortedByDate = false;
-  late List<Hits> newsList;
-  late List<Hits> mainNewsList;
+  late List<Hits> newsList = [];
+  List<Hits> _searchResults = [];
 
   @override
   void initState() {
     super.initState();
+
     fetchNews();
   }
 
-
-  Future<void> _launchUrl(String urlString) async {
-    Uri uri = Uri.parse(urlString);
-    if (!await launchUrl(uri)) {
-      throw "can not launch url $uri";
-    }
-    await launchUrl(uri);
-  }
-
-Future<List<Hits>> fetchNews() async {
-    final fetchedNews = await client.getNews();
-    setState(() {
-      newsList = fetchedNews;
-      mainNewsList = fetchedNews;
-    });
-    return fetchedNews;
-  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,13 +90,6 @@ Future<List<Hits>> fetchNews() async {
                   title: Text("filter by date"),
                 ),
               ),
-              const PopupMenuItem(
-                value: 'searchByKeyWord',
-                child: ListTile(
-                  leading: Icon(Icons.text_fields_rounded),
-                  title: Text("search by text"),
-                ),
-              ),
             ],
           ),
         ],
@@ -125,7 +101,6 @@ Future<List<Hits>> fetchNews() async {
             margin: EdgeInsets.all(16),
             child: TextField(
               cursorColor: Colors.orange,
-              controller: serachController,
               decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search),
                 hintText: "key word",
@@ -134,70 +109,64 @@ Future<List<Hits>> fetchNews() async {
                   borderSide: BorderSide(color: Colors.orange),
                 ),
               ),
-              onChanged: searchArticle,
+              onChanged: _performSearch,
             ),
           ),
           Expanded(
-              child: FutureBuilder(
-            future: fetchNews(),
-            builder: (BuildContext context, AsyncSnapshot<List<Hits>> snapshot) {
-              if(snapshot.hasData){
-                return ListView.builder(
-
-                  itemCount: mainNewsList.length,
-                  itemBuilder: (BuildContext context, int index) {
-                     Hits hit = mainNewsList[index];
-
-                    return GestureDetector(
-                      onTap: () async {
-                        if (hit.url != null) {
-                          await _launchUrl(hit.url!);
-                        }
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.all(12.0),
-                        padding: const EdgeInsets.all(8.0),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12.0),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black12, blurRadius: 3.0),
-                          ],
-                        ),
-                        child: ListTile(
-                          title: Text(hit.title ?? ''),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Author: ${hit.author ?? ''}'),
-                              Text(
-                                  'Published: ${hit.createdAt?.substring(0, 10) ?? ''}'),
-                              Text('Comments: ${hit.numComments ?? ''}'),
-                              Text('Points: ${hit.points ?? ''}'),
+            child: _searchResults.isEmpty
+                ? const Center(
+                    child: Text('No articles found.'),
+                  )
+                : ListView.builder(
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final hit = _searchResults[index];
+                      return GestureDetector(
+                        onTap: () async {
+                          if (hit.url != null) {
+                            await _launchUrl(hit.url!);
+                          }
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.all(12.0),
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12.0),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black12, blurRadius: 3.0),
                             ],
                           ),
-                          leading: IconButton(
-                            icon: hit.isFavorite
-                                ? const Icon(Icons.favorite)
-                                : const Icon(Icons.favorite_border),
-                            onPressed: () {
-                              setState(() {
-                                hit.isFavorite = !hit.isFavorite;
-                                storageService.storeData(hit);
-                              });
-                            },
+                          child: ListTile(
+                            title: Text(hit.title ?? ''),
+                            // Display title or empty string if null
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Author: ${hit.author ?? ''}'),
+                                Text(
+                                    'Published: ${hit.createdAt?.substring(0, 10) ?? ''}'),
+                                Text('Comments: ${hit.numComments ?? ''}'),
+                                Text('Points: ${hit.points ?? ''}'),
+                              ],
+                            ),
+                            leading: IconButton(
+                              icon: hit.isFavorite
+                                  ? const Icon(Icons.favorite)
+                                  : const Icon(Icons.favorite_border),
+                              onPressed: () {
+                                setState(() {
+                                  hit.isFavorite = !hit.isFavorite;
+                                  storageService.storeData(hit);
+                                });
+                              },
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                );
-
-              }else {
-                return Center(child: CircularProgressIndicator(),);
-                  }
-                },
-          )),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );
@@ -339,16 +308,30 @@ Future<List<Hits>> fetchNews() async {
     }
   }
 
-  void searchArticle(String query) async {
-    final suggestions = mainNewsList.where((article) {
-      final articleTitle = article.title!.toLowerCase();
-      final input = query.toLowerCase();
-      return articleTitle.contains(input);
-    }).toList();
+  Future<void> _launchUrl(String urlString) async {
+    Uri uri = Uri.parse(urlString);
+    if (!await launchUrl(uri)) {
+      throw "can not launch url $uri";
+    }
+    await launchUrl(uri);
+  }
+
+  Future<void> fetchNews() async {
+    final fetchedNews = await client.getNews();
+    setState(() {
+      newsList = fetchedNews;
+      _searchResults = fetchedNews;
+    });
+  }
+
+  void _performSearch(String query) {
+    final input = query.toLowerCase();
+    final filteredResults = newsList
+        .where((hit) => hit.title?.toLowerCase().contains(input) ?? false)
+        .toList();
 
     setState(() {
-      mainNewsList = suggestions;
-
+      _searchResults = filteredResults;
     });
   }
 }
