@@ -22,6 +22,7 @@ class _HomePageState extends State<HomePage> {
   StorageService storageService = StorageService();
   final _toController = TextEditingController();
   final _fromController = TextEditingController();
+  final _searchController = TextEditingController();
   bool isSortedByPoints = false;
   bool isSortedByDate = false;
   late List<Hits> newsList = [];
@@ -36,6 +37,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+
+
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -101,6 +104,7 @@ class _HomePageState extends State<HomePage> {
             margin: EdgeInsets.all(16),
             child: TextField(
               cursorColor: Colors.orange,
+              controller: _searchController,
               decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search),
                 hintText: "key word",
@@ -109,63 +113,63 @@ class _HomePageState extends State<HomePage> {
                   borderSide: BorderSide(color: Colors.orange),
                 ),
               ),
-              onChanged: _performSearch,
+              onChanged: _performSearch, // Call search on text change
             ),
           ),
           Expanded(
             child: _searchResults.isEmpty
-                ? const Center(
-                    child: Text('No articles found.'),
-                  )
+                ? Center(
+              child: Text('No articles found.'),
+            )
                 : ListView.builder(
-                    itemCount: _searchResults.length,
-                    itemBuilder: (context, index) {
-                      final hit = _searchResults[index];
-                      return GestureDetector(
-                        onTap: () async {
-                          if (hit.url != null) {
-                            await _launchUrl(hit.url!);
-                          }
+              itemCount: _searchResults.length,
+              itemBuilder: (context, index) {
+                final hit = _searchResults[index];
+                return GestureDetector(
+                  onTap: () async {
+                    if (hit.url != null) {
+                      await _launchUrl(hit.url!);
+                    }
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.all(12.0),
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12.0),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 3.0),
+                      ],
+                    ),
+                    child: ListTile(
+                      title: Text(hit.title ?? ''),
+                      // Display title or empty string if null
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Author: ${hit.author ?? ''}'),
+                          Text(
+                              'Published: ${hit.createdAt?.substring(0, 10) ?? ''}'),
+                          Text('Comments: ${hit.numComments ?? ''}'),
+                          Text('Points: ${hit.points ?? ''}'),
+                        ],
+                      ),
+                      leading: IconButton(
+                        icon: hit.isFavorite
+                            ? const Icon(Icons.favorite)
+                            : const Icon(Icons.favorite_border),
+                        onPressed: () {
+                          setState(() {
+                            hit.isFavorite = !hit.isFavorite;
+                            storageService.storeData(hit);
+                          });
                         },
-                        child: Container(
-                          margin: const EdgeInsets.all(12.0),
-                          padding: const EdgeInsets.all(8.0),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12.0),
-                            boxShadow: const [
-                              BoxShadow(color: Colors.black12, blurRadius: 3.0),
-                            ],
-                          ),
-                          child: ListTile(
-                            title: Text(hit.title ?? ''),
-                            // Display title or empty string if null
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Author: ${hit.author ?? ''}'),
-                                Text(
-                                    'Published: ${hit.createdAt?.substring(0, 10) ?? ''}'),
-                                Text('Comments: ${hit.numComments ?? ''}'),
-                                Text('Points: ${hit.points ?? ''}'),
-                              ],
-                            ),
-                            leading: IconButton(
-                              icon: hit.isFavorite
-                                  ? const Icon(Icons.favorite)
-                                  : const Icon(Icons.favorite_border),
-                              onPressed: () {
-                                setState(() {
-                                  hit.isFavorite = !hit.isFavorite;
-                                  storageService.storeData(hit);
-                                });
-                              },
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -293,7 +297,7 @@ class _HomePageState extends State<HomePage> {
 
         print(newsDate);
         if ((newsDate.isAfter(selectedDate.start) &&
-                newsDate.isBefore(selectedDate.end)) ||
+            newsDate.isBefore(selectedDate.end)) ||
             (newsDate.year == selectedDate.start.year &&
                 newsDate.month == selectedDate.start.month &&
                 newsDate.day == selectedDate.start.day)) {
@@ -326,9 +330,8 @@ class _HomePageState extends State<HomePage> {
 
   void _performSearch(String query) {
     final input = query.toLowerCase();
-    final filteredResults = newsList
-        .where((hit) => hit.title?.toLowerCase().contains(input) ?? false)
-        .toList();
+    final filteredResults = newsList.where((hit) =>
+    hit.title?.toLowerCase().contains(input) ?? false).toList();
 
     setState(() {
       _searchResults = filteredResults;
